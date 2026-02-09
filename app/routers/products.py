@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from ..database import get_db
 from .. import models, schemas
@@ -13,6 +13,29 @@ def list_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
     """List all products with pagination."""
     products = db.query(models.Product).offset(skip).limit(limit).all()
     return products
+
+
+@router.get("/search", response_model=List[schemas.Product])
+def search_products(
+    q: Optional[str] = Query(None, description="Search by product name"),
+    min_price: Optional[float] = Query(None, description="Minimum price"),
+    max_price: Optional[float] = Query(None, description="Maximum price"),
+    in_stock: Optional[bool] = Query(None, description="Filter by stock availability"),
+    db: Session = Depends(get_db),
+):
+    """Search products with filters."""
+    query = db.query(models.Product)
+
+    if q:
+        query = query.filter(models.Product.name.contains(q))
+    if min_price is not None:
+        query = query.filter(models.Product.price >= min_price)
+    if max_price is not None:
+        query = query.filter(models.Product.price <= max_price)
+    if in_stock:
+        query = query.filter(models.Product.stock > 0)
+
+    return query.all()
 
 
 @router.get("/{product_id}", response_model=schemas.Product)
