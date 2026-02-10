@@ -1,6 +1,16 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import Optional, List
+from enum import Enum
+
+
+# Enums
+class OrderStatus(str, Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+    shipped = "shipped"
+    delivered = "delivered"
+    cancelled = "cancelled"
 
 
 # Product schemas
@@ -31,6 +41,24 @@ class Product(ProductBase):
         from_attributes = True
 
 
+# Customer schemas
+class CustomerBase(BaseModel):
+    name: str
+    email: EmailStr
+
+
+class CustomerCreate(CustomerBase):
+    pass
+
+
+class Customer(CustomerBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # Order Item schemas
 class OrderItemBase(BaseModel):
     product_id: int
@@ -44,6 +72,7 @@ class OrderItemCreate(OrderItemBase):
 class OrderItem(OrderItemBase):
     id: int
     unit_price: float
+    subtotal: float
 
     class Config:
         from_attributes = True
@@ -51,8 +80,7 @@ class OrderItem(OrderItemBase):
 
 # Order schemas
 class OrderBase(BaseModel):
-    customer_name: str
-    customer_email: str
+    customer_id: int
 
 
 class OrderCreate(OrderBase):
@@ -60,18 +88,23 @@ class OrderCreate(OrderBase):
 
 
 class OrderUpdate(BaseModel):
-    customer_name: Optional[str] = None
-    customer_email: Optional[str] = None
-    status: Optional[str] = None
+    status: OrderStatus
 
 
 class Order(OrderBase):
     id: int
     total: float
-    status: str
+    status: OrderStatus
     created_at: datetime
     updated_at: datetime
     items: List[OrderItem] = []
+
+    class Config:
+        from_attributes = True
+
+
+class CustomerWithOrders(Customer):
+    orders: List[Order] = []
 
     class Config:
         from_attributes = True

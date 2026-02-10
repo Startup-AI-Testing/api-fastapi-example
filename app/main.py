@@ -1,14 +1,14 @@
 from fastapi import FastAPI
 
 from .database import engine, Base
-from .routers import products, orders
+from .routers import products, orders, customers
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="FastAPI Example",
-    description="API de ejemplo con ABM de Productos y Ordenes",
+    title="Purchase Order API",
+    description="API for managing products, customers and purchase orders",
     version="1.0.0",
 )
 
@@ -16,7 +16,7 @@ app = FastAPI(
 @app.get("/")
 def root():
     return {
-        "name": "FastAPI Example API",
+        "name": "Purchase Order API",
         "version": "1.0.0",
         "docs": "/docs",
     }
@@ -29,4 +29,5 @@ def health():
 
 # Include routers
 app.include_router(products.router)
+app.include_router(customers.router)
 app.include_router(orders.router)
