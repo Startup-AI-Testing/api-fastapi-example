@@ -62,3 +62,27 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
     db.delete(db_product)
     db.commit()
     return None
+
+
+@router.get("/search/", response_model=List[schemas.Product])
+def search_products(
+    q: str | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    in_stock: bool | None = None,
+    db: Session = Depends(get_db),
+):
+    """Search for products based on various criteria."""
+    query = db.query(models.Product)
+
+    if q:
+        query = query.filter(models.Product.name.ilike(f"%{q}%"))
+    if min_price:
+        query = query.filter(models.Product.price >= min_price)
+    if max_price:
+        query = query.filter(models.Product.price <= max_price)
+    if in_stock:
+        query = query.filter(models.Product.stock > 0)
+
+    products = query.all()
+    return products
