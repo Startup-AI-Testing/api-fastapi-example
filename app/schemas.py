@@ -75,3 +75,13 @@ class Order(OrderBase):
 
     class Config:
         from_attributes = True
+
+
+# Bot Greeting schemas
+class BotGreetingRequest(BaseModel):
+    bot_name: str
+    meeting_topic: str
+
+
+class BotGreetingResponse(BaseModel):
+    greeting: str
