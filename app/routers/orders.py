@@ -32,7 +32,11 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
     order_items = []
 
     for item in order.items:
-        product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+        product = (
+            db.query(models.Product)
+            .filter(models.Product.id == item.product_id)
+            .first()
+        )
         if not product:
             raise HTTPException(
                 status_code=400, detail=f"Product with id {item.product_id} not found"
@@ -95,7 +99,11 @@ def delete_order(order_id: int, db: Session = Depends(get_db)):
 
     # Restore stock for items
     for item in db_order.items:
-        product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+        product = (
+            db.query(models.Product)
+            .filter(models.Product.id == item.product_id)
+            .first()
+        )
         if product:
             product.stock += item.quantity
 
