@@ -4,6 +4,7 @@ from typing import List
 
 from ..database import get_db
 from .. import models, schemas
+from ..services.discount_service import DiscountService
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -26,10 +27,10 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=schemas.Order, status_code=201)
 def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
-    """Create a new order with items."""
-    # Calculate total
-    total = 0.0
-    order_items = []
+    """Create a new order with items and optional discount."""
+    # Calculate subtotal
+    subtotal = 0.0
+    order_items_data = []
 
     for item in order.items:
         product = db.query(models.Product).filter(models.Product.id == item.product_id).first()
@@ -44,22 +45,59 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
             )
 
         item_total = product.price * item.quantity
-        total += item_total
-        order_items.append(
-            models.OrderItem(
-                product_id=item.product_id,
-                quantity=item.quantity,
-                unit_price=product.price,
+        subtotal += item_total
+        order_items_data.append({
+            "product": product,
+            "quantity": item.quantity,
+            "unit_price": product.price
+        })
+
+    # Handle discount
+    discount_amount = 0.0
+    if order.discount_code:
+        discount = db.query(models.Discount).filter(models.Discount.code == order.discount_code).first()
+        if not discount:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Discount code {order.discount_code} not found"
             )
-        )
-        # Update stock
-        product.stock -= item.quantity
+        
+        # Validate discount
+        DiscountService.validate_discount(discount, subtotal)
+        
+        # Calculate discount amount
+        discount_amount = DiscountService.calculate_discount(discount, subtotal)
+        
+        # Increment uses
+        discount.current_uses += 1
+
+    total = subtotal - discount_amount
 
     db_order = models.Order(
         customer_name=order.customer_name,
         customer_email=order.customer_email,
+        subtotal=subtotal,
+        discount_code=order.discount_code,
+        discount_amount=discount_amount,
         total=total,
     )
+    
+    # Create order items and update stock
+    order_items = []
+    for item_data in order_items_data:
+        product = item_data["product"]
+        quantity = item_data["quantity"]
+        
+        order_items.append(
+            models.OrderItem(
+                product_id=product.id,
+                quantity=quantity,
+                unit_price=item_data["unit_price"],
+            )
+        )
+        # Update stock
+        product.stock -= quantity
+
     db_order.items = order_items
 
     db.add(db_order)
