@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 
 from .database import Base
+from src.infrastructure.persistence.inventory.orm_models import InventoryORM as Inventory, StockReservationORM as StockReservation, StockMovementORM as StockMovement
 
 
 class Product(Base):
