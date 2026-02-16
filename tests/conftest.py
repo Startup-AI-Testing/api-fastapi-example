@@ -1,11 +1,25 @@
 import pytest
+import httpx
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.database import Base, get_db
-from app.main import app
+# Monkeypatch httpx.Client to ignore 'app' argument
+# This is a workaround for Starlette/httpx version incompatibility in the environment
+original_init = httpx.Client.__init__
+
+
+def new_init(self, *args, **kwargs):
+    if "app" in kwargs:
+        kwargs.pop("app")
+    original_init(self, *args, **kwargs)
+
+
+httpx.Client.__init__ = new_init
+
+from app.database import Base, get_db  # noqa: E402
+from app.main import app  # noqa: E402
 
 # Use an in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite://"
