@@ -69,12 +69,22 @@ class DiscountUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
+class DiscountValidateRequest(BaseModel):
+    order_amount: float
+
+
 class Discount(DiscountBase):
     id: int
     current_uses: int
 
     class Config:
         from_attributes = True
+
+
+class DiscountValidateResponse(BaseModel):
+    valid: bool
+    discount: Optional[Discount] = None
+    error: Optional[str] = None
 
 
 # Order schemas

@@ -1,4 +1,3 @@
-import pytest
 from datetime import datetime, timedelta
 
 def test_create_discount(client):
@@ -64,7 +63,8 @@ def test_validate_discount_endpoint(client):
     # Valid
     response = client.post("/discounts/VALIDATE_ME/validate", json={"order_amount": 150.0})
     assert response.status_code == 200
-    assert response.json()["valid"] is True
+    data = response.json()
+    assert data["valid"] is True, f"Validation failed: {data.get('error')}"
     
     # Invalid (amount)
     response = client.post("/discounts/VALIDATE_ME/validate", json={"order_amount": 50.0})

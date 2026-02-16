@@ -2,7 +2,6 @@ import pytest
 from datetime import datetime, timedelta
 from app.services.discount_service import DiscountService
 from app.models import Discount
-from app.schemas import OrderCreate, OrderItemCreate
 
 @pytest.fixture
 def active_percentage_discount():
