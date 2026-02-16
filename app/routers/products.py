@@ -1,11 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from ..database import get_db
 from .. import models, schemas
 
 router = APIRouter(prefix="/products", tags=["products"])
+
+
+@router.get("/search", response_model=List[schemas.Product])
+def search_products(
+    q: Optional[str] = Query(None, description="Search products by name"),
+    min_price: Optional[float] = Query(None, description="Minimum price"),
+    max_price: Optional[float] = Query(None, description="Maximum price"),
+    in_stock: Optional[bool] = Query(None, description="Filter by available stock"),
+    db: Session = Depends(get_db),
+):
+    """Search products with filters."""
+    query = db.query(models.Product)
+
+    if q:
+        query = query.filter(models.Product.name.ilike(f"%{q}%"))
+    if min_price is not None:
+        query = query.filter(models.Product.price >= min_price)
+    if max_price is not None:
+        query = query.filter(models.Product.price <= max_price)
+    if in_stock:
+        query = query.filter(models.Product.stock > 0)
+
+    return query.all()
 
 
 @router.get("/", response_model=List[schemas.Product])
@@ -39,7 +62,9 @@ def update_product(
     product_id: int, product: schemas.ProductUpdate, db: Session = Depends(get_db)
 ):
     """Update an existing product."""
-    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    db_product = (
+        db.query(models.Product).filter(models.Product.id == product_id).first()
+    )
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
 
@@ -55,7 +80,9 @@ def update_product(
 @router.delete("/{product_id}", status_code=204)
 def delete_product(product_id: int, db: Session = Depends(get_db)):
     """Delete a product."""
-    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    db_product = (
+        db.query(models.Product).filter(models.Product.id == product_id).first()
+    )
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
 
