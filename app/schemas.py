@@ -53,6 +53,7 @@ class OrderItem(OrderItemBase):
 class OrderBase(BaseModel):
     customer_name: str
     customer_email: str
+    discount_code: Optional[str] = None
 
 
 class OrderCreate(OrderBase):
@@ -67,6 +68,8 @@ class OrderUpdate(BaseModel):
 
 class Order(OrderBase):
     id: int
+    subtotal: float = 0.0
+    discount_amount: float = 0.0
     total: float
     status: str
     created_at: datetime
@@ -75,3 +78,41 @@ class Order(OrderBase):
 
     class Config:
         from_attributes = True
+
+
+# Discount schemas
+class DiscountBase(BaseModel):
+    code: str
+    discount_type: str
+    discount_value: float
+    min_order_amount: float = 0.0
+    max_uses: Optional[int] = None
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    is_active: bool = True
+
+
+class DiscountCreate(DiscountBase):
+    pass
+
+
+class DiscountUpdate(BaseModel):
+    is_active: Optional[bool] = None
+
+
+class Discount(DiscountBase):
+    id: int
+    current_uses: int
+
+    class Config:
+        from_attributes = True
+
+
+class DiscountValidationRequest(BaseModel):
+    order_amount: float
+
+
+class DiscountValidationResponse(BaseModel):
+    valid: bool
+    discount_amount: float
+    message: Optional[str] = None

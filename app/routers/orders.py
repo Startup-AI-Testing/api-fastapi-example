@@ -24,11 +24,13 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
     return order
 
 
+from ..services.discount_service import DiscountService, DiscountError
+
 @router.post("/", response_model=schemas.Order, status_code=201)
 def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
-    """Create a new order with items."""
-    # Calculate total
-    total = 0.0
+    """Create a new order with items and optional discount."""
+    # Calculate subtotal
+    subtotal = 0.0
     order_items = []
 
     for item in order.items:
@@ -44,7 +46,7 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
             )
 
         item_total = product.price * item.quantity
-        total += item_total
+        subtotal += item_total
         order_items.append(
             models.OrderItem(
                 product_id=item.product_id,
@@ -55,12 +57,34 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
         # Update stock
         product.stock -= item.quantity
 
+    # Handle discount
+    discount_amount = 0.0
+    db_discount = None
+    if order.discount_code:
+        db_discount = db.query(models.Discount).filter(models.Discount.code == order.discount_code).first()
+        if not db_discount:
+            raise HTTPException(status_code=400, detail="Discount code not found")
+        
+        try:
+            discount_amount = DiscountService.validate_and_calculate(db_discount, subtotal)
+        except DiscountError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    total = subtotal - discount_amount
+
     db_order = models.Order(
         customer_name=order.customer_name,
         customer_email=order.customer_email,
+        subtotal=subtotal,
+        discount_code=order.discount_code,
+        discount_amount=discount_amount,
         total=total,
     )
     db_order.items = order_items
+
+    # Increment discount usage
+    if db_discount:
+        db_discount.current_uses += 1
 
     db.add(db_order)
     db.commit()
