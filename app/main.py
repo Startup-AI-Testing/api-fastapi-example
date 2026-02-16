@@ -1,10 +1,6 @@
 from fastapi import FastAPI
 
-from .database import engine, Base
-from .routers import products, orders
-
-# Create database tables
-Base.metadata.create_all(bind=engine)
+from .routers import products, orders, discounts
 
 app = FastAPI(
     title="FastAPI Example",
@@ -30,3 +26,4 @@ def health():
 # Include routers
 app.include_router(products.router)
 app.include_router(orders.router)
+app.include_router(discounts.router)
