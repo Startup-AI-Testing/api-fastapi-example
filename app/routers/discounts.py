@@ -23,7 +23,7 @@ def create_discount(discount: DiscountCreate, db: Session = Depends(get_db)):
 
 @router.get("", response_model=List[DiscountResponse])
 def list_discounts(db: Session = Depends(get_db)):
-    return db.query(Discount).filter(Discount.is_active == True).all()
+    return db.query(Discount).filter(Discount.is_active).all()
 
 @router.post("/{code}/validate", response_model=DiscountValidationResponse)
 def validate_discount(code: str, order_amount: float, db: Session = Depends(get_db)):

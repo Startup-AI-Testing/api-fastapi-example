@@ -1,4 +1,3 @@
-import pytest
 from datetime import datetime, timedelta
 
 def test_create_order_with_percentage_discount(client):

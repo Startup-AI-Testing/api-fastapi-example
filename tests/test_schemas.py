@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import pytest
 from pydantic import ValidationError
-from app.schemas import DiscountCreate, DiscountResponse, OrderCreate
+from app.schemas import DiscountCreate, OrderCreate
 
 def test_discount_create_schema():
     valid_data = {
