@@ -4,6 +4,7 @@ from typing import List
 
 from ..database import get_db
 from .. import models, schemas
+from ..services.discount_service import DiscountService
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -27,8 +28,8 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=schemas.Order, status_code=201)
 def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
     """Create a new order with items."""
-    # Calculate total
-    total = 0.0
+    # Calculate subtotal
+    subtotal = 0.0
     order_items = []
 
     for item in order.items:
@@ -44,7 +45,7 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
             )
 
         item_total = product.price * item.quantity
-        total += item_total
+        subtotal += item_total
         order_items.append(
             models.OrderItem(
                 product_id=item.product_id,
@@ -55,9 +56,20 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
         # Update stock
         product.stock -= item.quantity
 
+    discount_amount = 0.0
+    if order.discount_code:
+        discount = DiscountService.validate_discount(db, order.discount_code, subtotal)
+        discount_amount = DiscountService.calculate_discount_amount(discount, subtotal)
+        DiscountService.increment_usage(db, discount)
+
+    total = subtotal - discount_amount
+
     db_order = models.Order(
         customer_name=order.customer_name,
         customer_email=order.customer_email,
+        subtotal=subtotal,
+        discount_code=order.discount_code,
+        discount_amount=discount_amount,
         total=total,
     )
     db_order.items = order_items
