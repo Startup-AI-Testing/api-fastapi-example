@@ -3,13 +3,20 @@ from typing import Optional
 from src.domain.inventory.entities.inventory import Inventory
 from src.domain.inventory.entities.stock_reservation import StockReservation
 from src.domain.inventory.entities.stock_movement import StockMovement
-from src.domain.inventory.ports.inventory_repository import IInventoryRepository
-from src.domain.inventory.ports.stock_reservation_repository import IStockReservationRepository
-from src.domain.inventory.ports.stock_movement_repository import IStockMovementRepository
-from src.domain.inventory.ports.event_publisher import IEventPublisher
+from src.domain.inventory.ports.i_inventory_repository import IInventoryRepository
+from src.domain.inventory.ports.i_stock_reservation_repository import IStockReservationRepository
+from src.domain.inventory.ports.i_stock_movement_repository import IStockMovementRepository
+from src.domain.inventory.ports.i_event_publisher import IEventPublisher
 
 from src.domain.inventory.events.inventory_events import (
     StockReserved, StockConfirmed, StockReleased, LowStockDetected, OutOfStock
+)
+
+from src.domain.inventory.errors.inventory_errors import (
+    InsufficientStockError,
+    InventoryNotFoundError,
+    ReservationNotFoundError,
+    ReservationExpiredError
 )
 
 class InventoryDomainService:
@@ -28,7 +35,7 @@ class InventoryDomainService:
     def reserve_stock(self, product_id: int, quantity: int, reservation_type: str = "order") -> StockReservation:
         inventory = self.inventory_repo.get_by_product_id(product_id)
         if not inventory:
-            raise ValueError(f"Inventory for product {product_id} not found")
+            raise InventoryNotFoundError(f"Inventory for product {product_id} not found")
 
         inventory.reserve(quantity)
         
@@ -68,14 +75,14 @@ class InventoryDomainService:
         
         return reservation
 
-    def confirm_reservation(self, reservation_id: uuid.UUID, order_id: int):
+    def confirm_reservation(self, reservation_id: uuid.UUID, order_id: int) -> StockReservation:
         reservation = self.reservation_repo.get_by_id(reservation_id)
         if not reservation:
-            raise ValueError(f"Reservation {reservation_id} not found")
+            raise ReservationNotFoundError(f"Reservation {reservation_id} not found")
 
         inventory = self.inventory_repo.get_by_product_id(reservation.inventory_id)
         if not inventory:
-            raise ValueError(f"Inventory for product {reservation.inventory_id} not found")
+            raise InventoryNotFoundError(f"Inventory for product {reservation.inventory_id} not found")
 
         reservation.confirm(order_id)
         inventory.confirm_reservation(reservation.quantity)
@@ -97,15 +104,16 @@ class InventoryDomainService:
             reservation_id=reservation.id,
             order_id=order_id
         ))
+        return reservation
 
     def release_reservation(self, reservation_id: uuid.UUID, reason: str = "released"):
         reservation = self.reservation_repo.get_by_id(reservation_id)
         if not reservation:
-            raise ValueError(f"Reservation {reservation_id} not found")
+            raise ReservationNotFoundError(f"Reservation {reservation_id} not found")
 
         inventory = self.inventory_repo.get_by_product_id(reservation.inventory_id)
         if not inventory:
-            raise ValueError(f"Inventory for product {reservation.inventory_id} not found")
+            raise InventoryNotFoundError(f"Inventory for product {reservation.inventory_id} not found")
 
         reservation.release()
         inventory.release_reservation(reservation.quantity)
@@ -129,10 +137,10 @@ class InventoryDomainService:
         ))
 
 
-    def restock(self, product_id: int, quantity: int, created_by: str = "admin"):
+    def restock(self, product_id: int, quantity: int, created_by: str = "admin") -> Inventory:
         inventory = self.inventory_repo.get_by_product_id(product_id)
         if not inventory:
-            raise ValueError(f"Inventory for product {product_id} not found")
+            raise InventoryNotFoundError(f"Inventory for product {product_id} not found")
 
         inventory.restock(quantity)
         
@@ -146,11 +154,12 @@ class InventoryDomainService:
 
         self.inventory_repo.save(inventory)
         self.movement_repo.save(movement)
+        return inventory
 
-    def adjust_stock(self, product_id: int, quantity: int, reason: str, created_by: str = "admin"):
+    def adjust_stock(self, product_id: int, quantity: int, reason: str, created_by: str = "admin") -> Inventory:
         inventory = self.inventory_repo.get_by_product_id(product_id)
         if not inventory:
-            raise ValueError(f"Inventory for product {product_id} not found")
+            raise InventoryNotFoundError(f"Inventory for product {product_id} not found")
 
         inventory.adjust(quantity)
         
@@ -164,6 +173,7 @@ class InventoryDomainService:
 
         self.inventory_repo.save(inventory)
         self.movement_repo.save(movement)
+        return inventory
 
     def check_availability(self, product_id: int, quantity: int) -> bool:
         inventory = self.inventory_repo.get_by_product_id(product_id)

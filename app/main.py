@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from .database import engine, Base
 from .routers import products, orders
+from src.interfaces.http import inventory
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -30,3 +31,4 @@ def health():
 # Include routers
 app.include_router(products.router)
 app.include_router(orders.router)
+app.include_router(inventory.router)

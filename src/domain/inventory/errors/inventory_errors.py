@@ -13,3 +13,15 @@ class ConcurrencyError(InventoryError):
 class ReservationError(InventoryError):
     """Raised when there is an error with a reservation"""
     pass
+
+class InventoryNotFoundError(InventoryError):
+    """Raised when inventory for a product is not found"""
+    pass
+
+class ReservationNotFoundError(ReservationError):
+    """Raised when a reservation is not found"""
+    pass
+
+class ReservationExpiredError(ReservationError):
+    """Raised when a reservation has expired"""
+    pass
