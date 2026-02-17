@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Uuid
 from sqlalchemy.orm import relationship
 from datetime import datetime
+import uuid
 
 from .database import Base
 
@@ -17,6 +18,52 @@ class Product(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     order_items = relationship("OrderItem", back_populates="product")
+    inventory = relationship("Inventory", back_populates="product", uselist=False)
+
+
+class Inventory(Base):
+    __tablename__ = "inventory"
+
+    product_id = Column(Integer, ForeignKey("products.id"), primary_key=True)
+    quantity_available = Column(Integer, default=0)
+    quantity_reserved = Column(Integer, default=0)
+    quantity_sold = Column(Integer, default=0)
+    reorder_point = Column(Integer, default=0)
+    version = Column(Integer, default=1, nullable=False)
+    last_restocked_at = Column(DateTime, default=datetime.utcnow)
+
+    product = relationship("Product", back_populates="inventory")
+    reservations = relationship("StockReservation", back_populates="inventory")
+    movements = relationship("StockMovement", back_populates="inventory")
+
+
+class StockReservation(Base):
+    __tablename__ = "stock_reservations"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    inventory_id = Column(Integer, ForeignKey("inventory.product_id"), nullable=False)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
+    quantity = Column(Integer, nullable=False)
+    reserved_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    status = Column(String(20), default="active") # active, confirmed, released, expired
+    reservation_type = Column(String(20), default="order") # order, cart
+
+    inventory = relationship("Inventory", back_populates="reservations")
+
+
+class StockMovement(Base):
+    __tablename__ = "stock_movements"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    inventory_id = Column(Integer, ForeignKey("inventory.product_id"), nullable=False)
+    movement_type = Column(String(20), nullable=False) # restock, reserve, release, sale, adjustment
+    quantity = Column(Integer, nullable=False)
+    reference_id = Column(Uuid, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String(100), default="system")
+
+    inventory = relationship("Inventory", back_populates="movements")
 
 
 class Order(Base):
