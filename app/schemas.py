@@ -58,6 +58,7 @@ class OrderBase(BaseModel):
 
 class OrderCreate(OrderBase):
     items: List[OrderItemCreate]
+    reservation_id: Optional[UUID] = None
 
 
 class OrderUpdate(BaseModel):
