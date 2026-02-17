@@ -47,20 +47,66 @@ La API estará disponible en http://localhost:8000
 | PUT | /orders/{id} | Actualizar orden |
 | DELETE | /orders/{id} | Eliminar orden |
 
-## Ejemplo de uso
+## Sistema de Inventario y Reservas
 
-### Crear un producto
+Este proyecto implementa un sistema robusto de gestión de inventario con soporte para reservas temporales, control transaccional y prevención de sobreventa (overselling).
 
+### Arquitectura
+
+Se sigue una arquitectura hexagonal con Domain-Driven Design (DDD):
+
+- **Dominio**: Entidades (`Inventory`, `StockReservation`), Value Objects y Servicios de Dominio.
+- **Aplicación**: Handlers de casos de uso (`ReserveStockHandler`, `ConfirmReservationHandler`, etc.).
+- **Infraestructura**: Repositorios SQL con bloqueo optimista y adaptadores externos.
+- **Interfaces**: Endpoints HTTP de FastAPI.
+
+### Flujo de Reserva y Venta
+
+1. **Reserva (Carrito)**: El usuario reserva stock temporalmente (15 min).
+   - `POST /inventory/reserve`
+2. **Checkout**: Al crear la orden, se confirma la reserva.
+   - `POST /orders` (incluyendo `reservation_id`)
+3. **Expiración**: Un job en segundo plano libera automáticamente las reservas expiradas.
+
+### Endpoints de Inventario
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | /inventory/reserve | Reservar stock para un producto |
+| POST | /inventory/reserve/{id}/confirm | Confirmar una reserva manualmente |
+| DELETE | /inventory/reserve/{id} | Liberar una reserva |
+| GET | /inventory/product/{id} | Consultar disponibilidad de un producto |
+| POST | /inventory/restock | Reponer stock (Admin) |
+| POST | /inventory/adjust | Ajuste manual de stock (Admin) |
+| GET | /inventory/movements | Historial de movimientos |
+| GET | /inventory/low-stock | Productos con stock bajo |
+
+### Ejemplos de API
+
+#### Reservar Stock
 ```bash
-curl -X POST http://localhost:8000/products \
+curl -X POST http://localhost:8000/inventory/reserve \
   -H "Content-Type: application/json" \
-  -d '{"name": "Laptop", "description": "Laptop gaming", "price": 999.99, "stock": 10}'
+  -d '{"product_id": 1, "quantity": 2, "reservation_type": "cart"}'
 ```
 
-### Crear una orden
-
+#### Crear Orden con Reserva
 ```bash
 curl -X POST http://localhost:8000/orders \
   -H "Content-Type: application/json" \
-  -d '{"customer_name": "Juan", "customer_email": "juan@example.com", "items": [{"product_id": 1, "quantity": 2}]}'
+  -d '{
+    "customer_name": "Juan",
+    "customer_email": "juan@example.com",
+    "reservation_id": "uuid-de-la-reserva",
+    "items": [{"product_id": 1, "quantity": 2}]
+  }'
 ```
+
+### Bloqueo Optimista
+
+El sistema utiliza un campo `version` en la tabla de inventario para manejar la concurrencia. Si dos procesos intentan actualizar el mismo registro simultáneamente, uno fallará y el sistema reintentará la operación automáticamente hasta 3 veces.
+
+### Jobs en Segundo Plano
+
+- **Liberación de Reservas**: Cada 5 minutos se liberan las reservas que han superado su tiempo de expiración.
+- **Detección de Stock Bajo**: Cada hora se verifica si hay productos por debajo de su punto de reorden.
