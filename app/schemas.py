@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
+from decimal import Decimal
 
 
 # Product schemas
@@ -31,6 +32,56 @@ class Product(ProductBase):
         from_attributes = True
 
 
+# Discount schemas
+class DiscountBase(BaseModel):
+    code: str
+    discount_type: str  # "percentage" or "fixed_amount"
+    discount_value: Decimal
+    min_order_amount: Decimal = Decimal("0.0")
+    max_uses: int
+    valid_from: datetime
+    valid_until: datetime
+    is_active: bool = True
+
+
+class DiscountCreate(DiscountBase):
+    pass
+
+
+class DiscountUpdate(BaseModel):
+    discount_type: Optional[str] = None
+    discount_value: Optional[Decimal] = None
+    min_order_amount: Optional[Decimal] = None
+    max_uses: Optional[int] = None
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    is_active: Optional[bool] = None
+
+
+class Discount(DiscountBase):
+    id: int
+    current_uses: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DiscountStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class DiscountValidationRequest(BaseModel):
+    order_amount: Decimal
+
+
+class DiscountValidationResponse(BaseModel):
+    is_valid: bool
+    message: str
+    discount: Optional[Discount] = None
+
+
 # Order Item schemas
 class OrderItemBase(BaseModel):
     product_id: int
@@ -57,6 +108,7 @@ class OrderBase(BaseModel):
 
 class OrderCreate(OrderBase):
     items: List[OrderItemCreate]
+    discount_code: Optional[str] = None
 
 
 class OrderUpdate(BaseModel):
@@ -67,6 +119,9 @@ class OrderUpdate(BaseModel):
 
 class Order(OrderBase):
     id: int
+    subtotal: float
+    discount_code: Optional[str] = None
+    discount_amount: float
     total: float
     status: str
     created_at: datetime
