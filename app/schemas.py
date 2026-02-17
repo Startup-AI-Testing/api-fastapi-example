@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
+from uuid import UUID
 
 
 # Product schemas
@@ -57,6 +58,7 @@ class OrderBase(BaseModel):
 
 class OrderCreate(OrderBase):
     items: List[OrderItemCreate]
+    reservation_id: Optional[UUID] = None
 
 
 class OrderUpdate(BaseModel):
@@ -72,6 +74,75 @@ class Order(OrderBase):
     created_at: datetime
     updated_at: datetime
     items: List[OrderItem] = []
+
+    class Config:
+        from_attributes = True
+
+
+# Inventory schemas
+class InventoryBase(BaseModel):
+    product_id: int
+    quantity_available: int
+    quantity_reserved: int
+    quantity_sold: int
+    reorder_point: int
+
+
+class Inventory(InventoryBase):
+    version: int
+    last_restocked_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+class StockReservationBase(BaseModel):
+    product_id: int
+    quantity: int
+    reservation_type: str = "order"
+
+
+class StockReservationCreate(StockReservationBase):
+    pass
+
+
+class StockReservation(BaseModel):
+    id: UUID
+    inventory_id: int
+    order_id: Optional[int]
+    quantity: int
+    reserved_at: datetime
+    expires_at: datetime
+    status: str
+    reservation_type: str
+
+    class Config:
+        from_attributes = True
+
+
+class StockReservationConfirm(BaseModel):
+    order_id: int
+
+
+class RestockRequest(BaseModel):
+    product_id: int
+    quantity: int
+
+
+class StockAdjustmentRequest(BaseModel):
+    product_id: int
+    quantity: int
+    reason: str
+
+
+class StockMovement(BaseModel):
+    id: UUID
+    inventory_id: int
+    movement_type: str
+    quantity: int
+    reference_id: Optional[UUID]
+    created_at: datetime
+    created_by: str
 
     class Config:
         from_attributes = True
