@@ -47,6 +47,19 @@ La API estará disponible en http://localhost:8000
 | PUT | /orders/{id} | Actualizar orden |
 | DELETE | /orders/{id} | Eliminar orden |
 
+### Inventario (Reservas y Stock)
+
+Consulte [INVENTORY_SYSTEM.md](INVENTORY_SYSTEM.md) para más detalles.
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | /inventory/product/{id} | Consultar disponibilidad |
+| POST | /inventory/reserve | Reservar stock |
+| POST | /inventory/reserve/{id}/confirm | Confirmar reserva |
+| DELETE | /inventory/reserve/{id} | Liberar reserva |
+| POST | /inventory/restock | Reponer stock |
+| GET | /inventory/movements | Historial de movimientos |
+
 ## Ejemplo de uso
 
 ### Crear un producto
