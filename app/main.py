@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-
 from .database import engine, Base
-from .routers import products, orders
+from .routers import products, orders, inventory
+from src.infrastructure.jobs.scheduler import start_scheduler
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -11,6 +11,10 @@ app = FastAPI(
     description="API de ejemplo con ABM de Productos y Ordenes",
     version="1.0.0",
 )
+
+@app.on_event("startup")
+def startup_event():
+    start_scheduler()
 
 
 @app.get("/")
@@ -30,3 +34,4 @@ def health():
 # Include routers
 app.include_router(products.router)
 app.include_router(orders.router)
+app.include_router(inventory.router)
