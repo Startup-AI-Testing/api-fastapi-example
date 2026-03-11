@@ -31,6 +31,13 @@ class Product(ProductBase):
         from_attributes = True
 
 
+class OrderStats(BaseModel):
+    total_orders: int
+    total_revenue: float
+    average_order_value: float
+    top_product_id: Optional[int] = None
+
+
 # Order Item schemas
 class OrderItemBase(BaseModel):
     product_id: int
