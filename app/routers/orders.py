@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from sqlalchemy import func
+from typing import List, Optional
+from datetime import datetime, date
 
 from ..database import get_db
 from .. import models, schemas
@@ -13,6 +15,65 @@ def list_orders(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """List all orders with pagination."""
     orders = db.query(models.Order).offset(skip).limit(limit).all()
     return orders
+
+
+@router.get("/stats", response_model=schemas.OrderStats)
+def get_order_stats(
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    db: Session = Depends(get_db),
+):
+    """Get order statistics with optional date filtering."""
+    query = db.query(models.Order)
+
+    if date_from:
+        query = query.filter(
+            models.Order.created_at >= datetime.combine(date_from, datetime.min.time())
+        )
+    if date_to:
+        query = query.filter(
+            models.Order.created_at <= datetime.combine(date_to, datetime.max.time())
+        )
+
+    stats = query.with_entities(
+        func.count(models.Order.id).label("total_orders"),
+        func.sum(models.Order.total).label("total_revenue"),
+        func.avg(models.Order.total).label("average_order_value"),
+    ).first()
+
+    total_orders = stats.total_orders or 0
+    total_revenue = stats.total_revenue or 0.0
+    average_order_value = stats.average_order_value or 0.0
+
+    # Top product
+    top_product_query = (
+        db.query(
+            models.OrderItem.product_id,
+            func.sum(models.OrderItem.quantity).label("total_quantity"),
+        )
+        .join(models.Order)
+        .group_by(models.OrderItem.product_id)
+        .order_by(func.sum(models.OrderItem.quantity).desc())
+    )
+
+    if date_from:
+        top_product_query = top_product_query.filter(
+            models.Order.created_at >= datetime.combine(date_from, datetime.min.time())
+        )
+    if date_to:
+        top_product_query = top_product_query.filter(
+            models.Order.created_at <= datetime.combine(date_to, datetime.max.time())
+        )
+
+    top_product = top_product_query.first()
+    top_product_id = top_product.product_id if top_product else None
+
+    return {
+        "total_orders": total_orders,
+        "total_revenue": total_revenue,
+        "average_order_value": average_order_value,
+        "top_product_id": top_product_id,
+    }
 
 
 @router.get("/{order_id}", response_model=schemas.Order)

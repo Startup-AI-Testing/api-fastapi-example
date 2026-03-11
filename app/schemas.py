@@ -75,3 +75,11 @@ class Order(OrderBase):
 
     class Config:
         from_attributes = True
+
+
+# Order statistics schema
+class OrderStats(BaseModel):
+    total_orders: int
+    total_revenue: float
+    average_order_value: float
+    top_product_id: Optional[int] = None
