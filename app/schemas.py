@@ -57,6 +57,7 @@ class OrderBase(BaseModel):
 
 class OrderCreate(OrderBase):
     items: List[OrderItemCreate]
+    discount_code: Optional[str] = None
 
 
 class OrderUpdate(BaseModel):
@@ -67,11 +68,42 @@ class OrderUpdate(BaseModel):
 
 class Order(OrderBase):
     id: int
+    subtotal: float
+    discount_code: Optional[str] = None
+    discount_amount: float
     total: float
     status: str
     created_at: datetime
     updated_at: datetime
     items: List[OrderItem] = []
+
+    class Config:
+        from_attributes = True
+
+
+# Discount schemas
+class DiscountBase(BaseModel):
+    code: str
+    discount_type: str  # "percentage" or "fixed_amount"
+    discount_value: float
+    min_order_amount: float = 0.0
+    max_uses: Optional[int] = None
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    is_active: bool = True
+
+
+class DiscountCreate(DiscountBase):
+    pass
+
+
+class DiscountUpdate(BaseModel):
+    is_active: Optional[bool] = None
+
+
+class Discount(DiscountBase):
+    id: int
+    current_uses: int
 
     class Config:
         from_attributes = True
